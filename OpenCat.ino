@@ -30,6 +30,295 @@
 #define MAIN_SKETCH
 #include "WriteInstinct/OpenCat.h"
 
+/* MUSIC INCLUDES AND DEFINES */
+// used to describe how fast the Arduino calls the interrupt. Higher means slower update and less accurate frequencies; lower means faster update and more accurate frequency. Anything lower than ~20 is corruptive.
+#define SPEEDCONST 32
+#define REST 126
+
+#include "Music.h"
+#include <math.h>
+
+/* MUSIC CLASSES USED IN FORMATION OF SONGS */
+// a single note to be played in a Motif
+class Note {
+  public:
+    uint8_t duration; // durations: 64 = whole note, 32 = half note, 16 = quarter note, 8 = eighth note, 4 = sixteenth note
+    uint8_t distance; // "distance" from the root note in semitones. REST (REST) for silence.
+    Note(char note, int nDur) : duration(nDur), distance(note) {}
+};
+
+// an array of Notes
+class Motif {
+  public:
+    uint8_t length; // number of notes
+    Note* notes;
+    Motif(Note* nNotes,  unsigned char nLength) : length(nLength), notes(nNotes) {}
+};
+
+// an array of Motifs
+class Song {
+  public:
+    uint8_t length;
+    //uint8_t defaultTempo; // in "(1 / noteIsOneBeat)-notes per minute" i.e. "quarter notes per minute" or "eighth notes per minute"       NUMERATOR of time signature
+    uint8_t defaultNoteIsOneBeat; // note that is one beat                                                                                DENOMINATOR of time signature
+    double beatInMilliseconds;
+    Motif** motifs;
+    Song(Motif** nMotifs,  unsigned char nLength,  unsigned char tempo,  unsigned char beat) : motifs(nMotifs), length(nLength), defaultNoteIsOneBeat(beat) {
+        beatInMilliseconds = getBeatInMilliseconds(tempo);
+    }
+};
+
+// SONG LIBRARY AND CLASSES
+// Some songs may be commented out, as the Arduino doesn't have enough memory to store them.
+class Songbook {
+    // declaration of Notes, Motifs, and Songs.
+    // motifs' number postfix show the order in the song they first appear
+    /*
+      PREFIX KEY:
+      n_          ...   Note[]  ---> Motif
+      n_...REST#  ...   Note[] with only rests
+      m_          ...   Motif
+      s_          ...   Motif[] ---> Song
+      [nothing]   ...   Song
+    */
+  private:
+    static Note n_BM1[6];
+    static Note n_BM2[6];
+    static Note n_BM3[6];
+    static Note n_BM4[6];
+    static Note n_BM5[7];
+    static Note n_BM6[4];
+    static Note n_BM7[6];
+    static Note n_BM8[8];
+    static Note n_BM9[7];
+    static Note n_BM10[8];
+    static Note n_BM11[8];
+    static Note n_BM12[10];
+    static Note n_BM13[5];
+
+//    static Note n_MEGAREST1[1];
+//    static Note n_MEGAMelody[12];
+//    static Note n_MEGA1[2];
+//    static Note n_MEGA2[2];
+//    static Note n_MEGA3[2];
+//    static Note n_MEGA4[2];
+    
+    // ----------------------------------
+    static Motif* m_BM1;
+    static Motif* m_BM2;
+    static Motif* m_BM3;
+    static Motif* m_BM4;
+    static Motif* m_BM5;
+    static Motif* m_BM6;
+    static Motif* m_BM7;
+    static Motif* m_BM8;
+    static Motif* m_BM9;
+    static Motif* m_BM10;
+    static Motif* m_BM11;
+    static Motif* m_BM12;
+    static Motif* m_BM13;
+
+//    static Motif* m_MEGAMelody;
+//    static Motif* m_MEGA1;
+//    static Motif* m_MEGA2;
+//    static Motif* m_MEGA3;
+//    static Motif* m_MEGA4;
+    // ----------------------------------
+    static Motif* s_BanneredMare[16];
+//    static Motif* s_Megalovania[16];
+    // ----------------------------------
+  public:
+    static Song BanneredMare;
+//    static Song Megalovania;
+};
+/* SONG DEFINITIONS */
+// NOTE ARRAYS
+Note Songbook::n_BM1[6] = {
+  Note(15, 48), Note(12, 16), Note(14, 32), Note(15, 48), Note(17, 16), Note(15, 32) // x6
+};
+Note Songbook::n_BM2[6] = {
+  Note(14, 48), Note(10, 16), Note(12, 32), Note(14, 48), Note(15, 16), Note(14, 32) // x6
+};
+Note Songbook::n_BM3[6] = {
+  Note(12, 48), Note(8, 16), Note(10, 32), Note(12, 48), Note(14, 16), Note(12, 32) // x6
+};
+Note Songbook::n_BM4[6] = {
+  Note(11, 48), Note(12, 16), Note(9, 32), Note(11, 48), Note(REST, 16), Note(7, 32)// x6
+};
+Note Songbook::n_BM5[7] = {
+  Note(12, 48), Note(14, 16), Note(12, 16),  Note(REST, 16), Note(12, 48), Note(14, 16), Note(12, 32) // x7
+};
+Note Songbook::n_BM6[4] = {
+  Note(11, 64), Note(14, 32), Note(12, 64), Note(REST, 32) // x4
+};
+Note Songbook::n_BM7[6] = {
+  Note(19, 48), Note(15, 16), Note(17, 32), Note(19, 48), Note(20, 16), Note(19, 32) // x6
+};
+Note Songbook::n_BM8[8] = {
+  Note(17, 48), Note(14, 16), Note(15, 32), Note(17, 48), Note(19, 16), Note(17, 16), Note(15, 8), Note(99, 8) // x8
+};
+Note Songbook::n_BM9[7] = {
+  Note(14, 32 / 3), Note(15, 32 / 3), Note(14, 32 / 3 + 48 + 8), Note(REST, 8), Note(14, 64), Note(10, 24), Note(REST, 8) // x7
+};
+Note Songbook::n_BM10[8] = {
+  Note(19, 64), Note(15, 16), Note(17, 16), Note(19, 32), Note(20, 16), Note(19, 16), Note(17, 16), Note(15, 16) // x8
+};
+Note Songbook::n_BM11[8] = {
+  Note(17, 64), Note(14, 16), Note(15, 16), Note(17, 32), Note(19, 16), Note(17, 16), Note(15, 16), Note(14, 16) // x8
+};
+Note Songbook::n_BM12[10] = {
+  Note(15, 32), Note(12, 16), Note(14, 16), Note(15, 24), Note(REST, 8), Note(15, 32), Note(17, 16), Note(15, 16), Note(14, 16), Note(12, 16) // x10
+};
+Note Songbook::n_BM13[5] = {
+  Note(14, 32), Note(10, 32), Note(14, 32), Note(12, 64), Note(REST, 32) // x5
+};
+
+//Note Songbook::n_MEGAMelody[12] = {
+//     Note(12, 4), Note(REST, 4),  Note(7, 4), Note(REST, 8),
+//     Note(6, 4), Note(REST, 4), Note(5, 4), Note(REST, 4), Note(3, 8),
+//     Note(0, 4), Note(6, 4), Note(5, 4) 
+//};
+//Note Songbook::n_MEGA1[2] = {
+//     Note(0, 4), Note(0, 4)
+//};
+//Note Songbook::n_MEGA2[2] = {
+//     Note(-2, 4), Note(-2, 4)
+//};
+//Note Songbook::n_MEGA3[2] = {
+//     Note(-3, 4), Note(-3, 4)
+//};
+//Note Songbook::n_MEGA4[2] = {
+//     Note(-4, 4), Note(-4, 4)
+//};
+
+// MOTIFS
+Motif* Songbook::m_BM1 = new Motif(n_BM1, 6);
+Motif* Songbook::m_BM2 = new Motif(n_BM2, 6);
+Motif* Songbook::m_BM3 = new Motif(n_BM3, 6);
+Motif* Songbook::m_BM4 = new Motif(n_BM4, 6);
+Motif* Songbook::m_BM5 = new Motif(n_BM5, 7);
+Motif* Songbook::m_BM6 = new Motif(n_BM6, 4);
+Motif* Songbook::m_BM7 = new Motif(n_BM7, 6);
+Motif* Songbook::m_BM8 = new Motif(n_BM8, 8);
+Motif* Songbook::m_BM9 = new Motif(n_BM9, 7);
+Motif* Songbook::m_BM10 = new Motif(n_BM10, 8);
+Motif* Songbook::m_BM11 = new Motif(n_BM11, 8);
+Motif* Songbook::m_BM12 = new Motif(n_BM12, 10);
+Motif* Songbook::m_BM13 = new Motif(n_BM13, 5);
+Motif* Songbook::s_BanneredMare[16] = {
+  m_BM1, m_BM2, m_BM3, m_BM4,
+  m_BM1, m_BM2, m_BM5, m_BM6,
+  m_BM7, m_BM8, m_BM1, m_BM9,
+  m_BM10, m_BM11, m_BM12, m_BM13
+};
+
+//Motif* Songbook::m_MEGAMelody = new Motif(n_MEGAMelody, 12);
+//Motif* Songbook::m_MEGA1 = new Motif(n_MEGA1, 2);
+//Motif* Songbook::m_MEGA2 = new Motif(n_MEGA2, 2);
+//Motif* Songbook::m_MEGA3 = new Motif(n_MEGA3, 2);
+//Motif* Songbook::m_MEGA4 = new Motif(n_MEGA4, 2);
+//Motif* Songbook::s_Megalovania[16] = {
+//    m_MEGA1, m_MEGAMelody, m_MEGA2, m_MEGAMelody, m_MEGA3, m_MEGAMelody, m_MEGA4, m_MEGAMelody, 
+//    
+//    m_MEGA1, m_MEGAMelody, m_MEGA2, m_MEGAMelody, m_MEGA3, m_MEGAMelody, m_MEGA4, m_MEGAMelody
+//};
+
+// SONGS
+Song Songbook::BanneredMare = Song(s_BanneredMare, 16, 90, 8);
+//Song Songbook::Megalovania = Song(s_Megalovania, 16, 60, 4);
+
+/* MUSIC VARIABLES */
+// Timer reload value, globally available
+unsigned int tcnt2;
+
+// Toggle HIGH or LOW digital write
+bool musicPulseHigh = 0;
+
+// holds the current frequency to play (actually holds the note's half-period in 64-microseconds) (i.e. 0 = 0 us, 1 = 64 us, 2 = 2 * 64, etc.
+uint8_t freq = REST;
+
+// keeps track of when each note needs to be switched, used to describe half-period in 64-microseconds; increases with time up to the count1/2/etc.'s respective freq[0]/2/etc.
+unsigned int musicFreqCounter = 0;
+
+unsigned int musicNoteCounter = 0;
+
+bool playingSong = false;
+
+// holds the time to play the current note in units of 64-microseconds
+int duration = 0;
+
+// holds the index of the current Motif of the Song to play
+uint8_t motifIndex = 0;
+
+// holds the index of the current Note of a Motif to play
+uint8_t noteIndex = 0;
+
+double key = 110.0;
+// Current song and note
+Song* currentSong;
+Note* currentNote;
+
+/* MUSIC ISR SETUP */
+// Installs the interrupt Service Routine (ISR) for Timer2, executed every SPEEDCONST microseconds
+ISR(TIMER2_OVF_vect) {
+  /* Reload the timer */
+  TCNT2 = tcnt2;
+  /* Note the lack of a for-loop for iterating through each channel. The notes sound slightly more grainy if the commands are executed through a for-loop. */
+
+  // goes through each channel, sees if it's playing a song
+  
+    if (playingSong) {
+      // Play the frequency, changing the pulse from HIGH to LOW when needed
+      if (freq != REST) {
+        musicFreqCounter++;
+        if (freq == musicFreqCounter) {
+          musicPulseHigh = !musicPulseHigh;
+          digitalWrite(BUZZER, musicPulseHigh ? HIGH : LOW);
+          musicFreqCounter = 0;
+        }
+      } else {
+        musicFreqCounter = 0;
+      }
+
+      // Progress through the song, changing the note when needed
+      if (musicNoteCounter == duration) {
+        musicNoteCounter = 0;
+        musicFreqCounter = 0;
+        if (noteIndex < currentSong->motifs[motifIndex]->length) { // same motif as before, next note
+        } else { // next motif
+          motifIndex++;
+          noteIndex = 0;
+        }
+        if (motifIndex == currentSong->length) { // end of song
+          endSong();
+        } else {
+          Serial.print("Note: ");
+          Serial.println(currentSong->motifs[motifIndex]->notes[noteIndex].distance);
+          currentNote = &(currentSong->motifs[motifIndex]->notes[noteIndex]);
+          duration = (currentNote->duration) * currentSong->beatInMilliseconds / currentSong->defaultNoteIsOneBeat * 1000 / SPEEDCONST;
+          freq = (currentNote->distance ==  REST) ? REST : getMicros(getFreq(currentNote->distance, key)); // REST? rest if true, normal frequency if not
+          noteIndex++;
+        }
+      } else {
+        musicNoteCounter++;
+      }
+  }
+}
+
+// resets variables used for tracking notes, etc.
+void endSong() {
+  musicPulseHigh = 0;
+  freq = REST;
+  musicFreqCounter = 0;
+  musicNoteCounter = 0;
+  playingSong = false;
+  duration = 0;
+  noteIndex = 0;
+  motifIndex = 0;
+}
+
+/* END MUSIC */
+
 #include <I2Cdev.h>
 #include <MPU6050_6Axis_MotionApps20.h>
 
@@ -402,6 +691,47 @@ void setup() {
   pinMode(BATT, INPUT);
   pinMode(BUZZER, OUTPUT);
   meow();
+
+
+  /* MUSIC SETUP */
+//  setKey('D', &key); // C D E F G A B
+  /* TIMER STUFF */
+  /* First disable the timer overflow interrupt*/
+  TIMSK2 &= ~(1 << TOIE2);
+
+  /* Configure timer2 in normal mode (no PWM) */
+  TCCR2A &= ~((1 << WGM21) | (1 << WGM20));
+  TCCR2B &= ~(1 << WGM22);
+
+  /* Select clock source: internal I/O clock */
+  ASSR &= ~(1 << AS2);
+
+  /* Disable Compare Match A interrupt (only overflow) */
+  TIMSK2 &= ~(1 << OCIE2A);
+
+  /* Configure the prescaler to CPU clock divided by 128 */
+  TCCR2B |= (1 << CS22)  | (1 << CS20); // Set bits
+  TCCR2B &= ~(1 << CS21);           // Clear bit
+
+  /* We need to calculate a proper value to load the counter.
+    The following loads the value 248 into the Timer 2 counter
+    The math behind this is:
+    (Desired period) = SPEEDCONSTus.
+    (CPU frequency) / (prescaler value) = 125000 Hz -> 8us.
+    SPEEDCONSTus / 8us
+    MAX(uint8) - SPEEDCONSTus / 8us = 252;
+  */
+  /* Save value globally for later reload in ISR */
+  tcnt2 = 256 - SPEEDCONST / 8;
+
+  /* Finally load end enable the timer */
+  TCNT2 = tcnt2;
+  TIMSK2 |= (1 << TOIE2);
+  
+  // MUSIC SETUP DONE
+  // PLAY SONG
+  currentSong = &Songbook::BanneredMare;
+  playingSong = true;
 }
 
 void loop() {
@@ -418,7 +748,8 @@ void loop() {
     //If too low, Nybble may faint due to temporary voltage drop
     PTL("check battery");
     PTL(voltage);//relative voltage
-    meow();
+//    meow();
+    delay(1000);
   }
   else {
     newCmd[0] = '\0';

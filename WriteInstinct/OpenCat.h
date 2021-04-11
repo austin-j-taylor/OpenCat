@@ -102,7 +102,7 @@
 
 void beep(int8_t note, float duration = 10, int pause = 0, byte repeat = 1 ) {
   if (note == 0) {//rest note
-    analogWrite(BUZZER, 0);
+    digitalWrite(BUZZER, LOW);
     delay(duration);
     return;
   }
@@ -110,10 +110,10 @@ void beep(int8_t note, float duration = 10, int pause = 0, byte repeat = 1 ) {
   float period = 1000000.0 / freq;
   for (byte r = 0; r < repeat; r++) {
     for (float t = 0; t < duration * 1000; t += period) {
-      analogWrite(BUZZER, 150);      // Almost any value can be used except 0 and 255
+      digitalWrite(BUZZER, HIGH);      // Almost any value can be used except 0 and 255
       // experiment to get the best tone
       delayMicroseconds(period / 2);        // rise for half period
-      analogWrite(BUZZER, 0);       // 0 turns it off
+      digitalWrite(BUZZER, LOW);       // 0 turns it off
       delayMicroseconds(period / 2);        // down for half period
     }
     delay(pause);
@@ -125,14 +125,15 @@ void playMelody(int start) {
     beep(EEPROM.read(start - 1 - i), 1000 / EEPROM.read(start - 1 - len - i), 100);
 }
 
-void meow(int repeat = 0, int pause = 200, int startF = 50,  int endF = 200, int increment = 5) {
+void meow(int repeat = 0, int pause = 200, int startF = 50,  int endF = 200, int increment = 50) {
   for (int r = 0; r < repeat + 1; r++) {
     for (int amp = startF; amp <= endF; amp += increment) {
-      analogWrite(BUZZER, amp);
+      digitalWrite(BUZZER, HIGH);
       delay(15); // wait for 15 milliseconds to allow the buzzer to vibrate
     }
+    digitalWrite(BUZZER, HIGH);
     delay(100 + 500 / increment);
-    analogWrite(BUZZER, 0);
+    digitalWrite(BUZZER, LOW);
     if (repeat)delay(pause);
   }
 }
