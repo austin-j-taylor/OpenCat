@@ -7,7 +7,7 @@
 /* FUNCTION DECLARATIONS */
 //void setKey(char, double*);
 double getBeatInMilliseconds(char);
-double getFreq(uint8_t, double);
+double getFreq(int8_t, double);
 char getMicros(double);
 
 /* FUNCTION DEFINITIONS */
@@ -17,7 +17,7 @@ char getMicros(double);
 double getBeatInMilliseconds(char tempo) {
   return (1.0 / (tempo / 60.0 / 1000.0) / 8);
 }
-double getFreq(uint8_t distance, double key) {
+double getFreq(int8_t distance, double key) {
   return key * pow(twototheonetwelfth, distance);
 }
 char getMicros(double freq) {
