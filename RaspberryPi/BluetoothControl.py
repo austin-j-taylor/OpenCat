@@ -1,5 +1,5 @@
 from evdev import InputDevice, categorize, ecodes
-  
+import serial
 import sys
 import time
 from pyjoycon import PythonicJoyCon, get_PRO_id
@@ -24,6 +24,7 @@ controllerStickMaxRY = 3560
 # Global so we can turn off lights in our exit callback
 joycon = 0
 dog = 0
+ser = 0
 
 # Switch Pro Controller functions
 
@@ -49,9 +50,9 @@ def disconnectController():
     global joycon
     if(joycon != 0):
         joycon.disconnect_device()
-        #set_home_light(joycon, 0)
-        #time.sleep(deltaTimeLong)
-        #joycon.set_player_lamp_flashing(0x8)
+        set_home_light(joycon, 0)
+        time.sleep(deltaTimeLong)
+        joycon.set_player_lamp_flashing(0x8)
     print("Disconnected.")
 
     
@@ -91,34 +92,39 @@ def scaleRightStickY(value):
 
 # Dog functions
 def connect():
-    global dog
-    print("Connecting...")
+    global dog, ser
+    print("Connecting to Bittle...")
     dog = 1
-    # sphero = sphero_mini.sphero_mini(MAC_ball, verbosity = 1, waitForResponse = False)
-    # sphero.setLEDColor(red = 255, green = 255, blue = 255)
-    # sphero.resetHeading() # Reset heading
+    # Connect to Bittle
+    ser = serial.Serial('/dev/rfcomm0', 115200)
+    print(f'Opened serial connection: {ser}')
     print("Connected.")
+    ser.write(b'kbalance\n')
     
 def disconnect():
-    global dog
+    global dog, ser
     if(dog != 0):
         print("Disconnecting from Bittle...")
+        ser.write(b'krest\n')
         # sphero.setLEDColor(red = 255, green = 0, blue = 0)
         # sphero.resetHeading() # Reset heading
         # sphero.roll(0,0)
         # sphero.sleep()
         # sphero.setLEDColor(red = 0, green = 0, blue = 0)
         # sphero.disconnect()
+        ser.close()
         print("Disconnected from Bittle.")
         dog = 0
 
+        
 
 def MainProgram():
     connected = False
     sprinting = False
+    movementState = "IDLE"
     lastHeading = 90
     start = time.time()
-    global joycon, dog
+    global joycon, dog, ser
     
     # Attempt to connect to the controller
     joycon_id = get_PRO_id()
@@ -138,14 +144,17 @@ def MainProgram():
         
     set_home_light(joycon, 20)
         
-        
+    
+    
+    
     while 1:
         time.sleep(deltaTime)
         
         try:
-            # End
+            # End without shutting down the Pi
             if(joycon.minus):
                 exit(0)
+            # End and shut down the Pi
             if(joycon.plus):
                 exit(1)
             # # Sprinting, staring states
@@ -170,8 +179,9 @@ def MainProgram():
             scaledRX = scaleRightStickX(joycon.stick_r[0])
             scaledRY = scaleRightStickY(joycon.stick_r[1])
             
-            print("Left  speed: %i angle: %i" % (getSpeed(scaledX, scaledY, sprinting), getAngle(scaledX, scaledY)))
-            print("Right speed: %i angle: %i" % (getSpeed(scaledRX, scaledRY, sprinting), getAngle(scaledRX, scaledRY)))
+            # print("Left  speed: %i angle: %i" % (getSpeed(scaledX, scaledY, sprinting), getAngle(scaledX, scaledY)))
+            # print("Right speed: %i angle: %i" % (getSpeed(scaledRX, scaledRY, sprinting), getAngle(scaledRX, scaledRY)))
+            
             # Connected status
             if(connected):
                 if(joycon.home):
@@ -184,7 +194,43 @@ def MainProgram():
                     joycon.set_player_lamp_on(0x1)
                     connected = False
                 else:
-                    pass
+                    # Send movement commands
+                    # Movement state machine transitions
+                    newMovementState = movementState
+                    if(scaledX == 0):
+
+                        if(scaledY > 0):
+                            newMovementState = "FORWARDS"
+                        elif(scaledY < 0):
+                            newMovementState = "REVERSE"
+                        else:
+                            newMovementState = "IDLE"
+                    else:
+                        if(scaledX > 0):
+                            newMovementState = "RIGHT"
+                        else:
+                            newMovementState = "LEFT"
+                            
+                    if(movementState != newMovementState):
+                        # print(f"X: {scaledX}\t, Y: {scaledY}")
+                        if(newMovementState == "IDLE"):
+                            # print("to idle")
+                            ser.write(b'kbalance\n')
+                        elif(newMovementState == "LEFT"):
+                            # print("to LEFT")
+                            ser.write(b'kwkL\n')
+                        elif(newMovementState == "RIGHT"):
+                            # print("to RIGHT")
+                            ser.write(b'kwkR\n')
+                        elif(newMovementState == "FORWARDS"):
+                            # print("to FORWARDS")
+                            ser.write(b'kwkF\n')
+                        elif(newMovementState == "REVERSE"):
+                            # print("to REVERSE")
+                            ser.write(b'kbk\n')
+                    
+                        movementState = newMovementState
+                        
                     # Don't send roll commands too often
                     # if(time.time() - start > .1):
                         # start = time.time()
