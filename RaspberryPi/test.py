@@ -20,14 +20,11 @@ while True:
 	if("".join(lastWord) == "Finished!"):
 		break
 '''
-print('Sitting')
 ser.write(b'kbalance')
 time.sleep(3)
-print('Zeroing')
 ser.write(b'kzero')
 time.sleep(3)
-print('Resting')
-ser.write(b'krest')
+ser.write(b'kbalance')
 time.sleep(1)
 ser.close()
 

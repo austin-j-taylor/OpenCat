@@ -3,7 +3,7 @@ import serial
 import sys
 import time
 from pyjoycon import PythonicJoyCon, get_PRO_id
-import time, math, atexit
+import time, math
 from bluepy import btle
     
 # time to sleep between commands to make sure they're not skipped
@@ -42,9 +42,11 @@ def set_home_light(joycon, brightness):
          b'\x01', b'\x38', param
     )
 
-def exit_handler():
+def exit_handler(exit_code):
     disconnect()
     disconnectController()
+    print(f"exit code: {exit_code}")
+    exit(exit_code)
 
 def disconnectController():
     global joycon
@@ -105,7 +107,8 @@ def disconnect():
     global dog, ser
     if(dog != 0):
         print("Disconnecting from Bittle...")
-        ser.write(b'krest\n')
+        ser.write(b'd\n')
+        time.sleep(deltaTimeLong)
         # sphero.setLEDColor(red = 255, green = 0, blue = 0)
         # sphero.resetHeading() # Reset heading
         # sphero.roll(0,0)
@@ -126,11 +129,14 @@ def MainProgram():
     start = time.time()
     global joycon, dog, ser
     
+    last_up = 0
+    last_down = 0
+    last_left = 0
+    last_right = 0
+    
     # Attempt to connect to the controller
     joycon_id = get_PRO_id()
     joycon = PythonicJoyCon(*joycon_id)
-
-    atexit.register(exit_handler)
 
     print("Pro Controller found: %s" % (joycon_id,))
     time.sleep(deltaTimeLong)
@@ -140,7 +146,7 @@ def MainProgram():
     if(joycon.battery_level == 0):
         joycon.set_player_lamp_on(0x8)
         print("Battery was read as 0, so something went wrong with the connection. Restarting...")
-        exit(1)
+        exit_handler(1)
         
     set_home_light(joycon, 20)
         
@@ -153,10 +159,10 @@ def MainProgram():
         try:
             # End without shutting down the Pi
             if(joycon.minus):
-                exit(0)
+                exit_handler(1)
             # End and shut down the Pi
             if(joycon.plus):
-                exit(1)
+                exit_handler(0)
             # # Sprinting, staring states
             # sprinting = joycon.a
             # if(connected):
@@ -172,7 +178,21 @@ def MainProgram():
                         # sphero.setBackLEDIntensity(255) # turn back LED on
                         # staring = True
                         
-                        
+            # Taunts
+            if(connected):
+                if(joycon.up and not last_up):
+                    print("UPPING")
+                    ser.write(b'khi\n')
+                elif(joycon.down and not last_down):
+                    print("downING")
+                    ser.write(b'ksit\n')
+                elif(joycon.left and not last_left):
+                    print("leftING")
+                    ser.write(b'kpu\n')
+                elif(joycon.right and not last_right):
+                    print("rightING")
+                    ser.write(b'kpee\n')
+                
             # Stick positions
             scaledX = scaleLeftStickX(joycon.stick_l[0])
             scaledY = scaleLeftStickY(joycon.stick_l[1])
@@ -197,22 +217,28 @@ def MainProgram():
                     # Send movement commands
                     # Movement state machine transitions
                     newMovementState = movementState
-                    if(scaledX == 0):
+                    if(abs(scaledX) < 30):
 
-                        if(scaledY > 0):
+                        if(scaledY > 30):
                             newMovementState = "FORWARDS"
-                        elif(scaledY < 0):
+                        elif(scaledY < -30):
                             newMovementState = "REVERSE"
                         else:
                             newMovementState = "IDLE"
                     else:
-                        if(scaledX > 0):
-                            newMovementState = "RIGHT"
+                        if(scaledY >= 30):
+                            if(scaledX > 30):
+                                newMovementState = "RIGHT"
+                            elif(scaledX < -30):
+                                newMovementState = "LEFT"
                         else:
-                            newMovementState = "LEFT"
+                            if(scaledX > 30):
+                                newMovementState = "REVERSE RIGHT"
+                            elif(scaledX < -30):
+                                newMovementState = "REVERSE LEFT"
                             
                     if(movementState != newMovementState):
-                        # print(f"X: {scaledX}\t, Y: {scaledY}")
+                        print(f"X: {scaledX}\t, Y: {scaledY}")
                         if(newMovementState == "IDLE"):
                             # print("to idle")
                             ser.write(b'kbalance\n')
@@ -228,8 +254,15 @@ def MainProgram():
                         elif(newMovementState == "REVERSE"):
                             # print("to REVERSE")
                             ser.write(b'kbk\n')
+                        elif(newMovementState == "REVERSE LEFT"):
+                            # print("to REVERSE")
+                            ser.write(b'kbkL\n')
+                        elif(newMovementState == "REVERSE RIGHT"):
+                            # print("to REVERSE")
+                            ser.write(b'kbkR\n')
                     
                         movementState = newMovementState
+                        print(f"Now: {movementState}")
                         
                     # Don't send roll commands too often
                     # if(time.time() - start > .1):
@@ -252,11 +285,18 @@ def MainProgram():
                     time.sleep(deltaTimeLong)
                     joycon.set_player_lamp_on(0x3)
                     connected = True
+            
         except btle.BTLEInternalError:
             print("Lost connection with Bittle.")
             connected = False
             sphero = 0
+            
+        last_up = joycon.up
+        last_down = joycon.down
+        last_left = joycon.left
+        last_right = joycon.right
     
 
 if __name__ == '__main__':
     MainProgram()
+    exit_handler(0)

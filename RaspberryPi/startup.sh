@@ -26,6 +26,8 @@ sudo bluetoothctl pairable on
 #sudo bluetoothctl scan off
 #sudo bluetoothctl quit
 
+sudo rfcomm -r connect hci0 77:90:17:35:31:6F &
+
 until sudo bluetoothctl connect 74:F9:CA:4B:21:6C
 do
 	sleep 1
@@ -36,20 +38,19 @@ done
 #sleep 1
 
 
-# sudo rfcomm -r connect hci0 77:90:17:35:31:6F &
 
-# python3 ~/Documents/sphero-mini-control/spheroSwitchProController.py
-# until python3 ~/Documents/sphero-mini-control/spheroSwitchProController.py
-# do
-	# echo "Running the script again."
-	# sleep 1
-	# # # # # until sudo bluetoothctl connect 74:F9:CA:4B:21:6C
-	# do
-		# sleep 1
-		# echo "not yet connected..."
-	# done
-	# echo "connected"
-# done
+python3 ~/Documents/OpenCat/RaspberryPi/BluetoothControl.py
+while python3 ~/Documents/OpenCat/RaspberryPi/BluetoothControl.py
+do
+	echo "Running the script again."
+	sleep 1
+	until sudo bluetoothctl connect 74:F9:CA:4B:21:6C
+	do
+		sleep 1
+		echo "not yet connected..."
+	done
+	echo "connected"
+done
 
-# echo "Script has finally ended. Shutting down the pi."
-# sudo shutdown -P now
+echo "Script has finally ended. Shutting down the pi."
+sudo shutdown -P now
