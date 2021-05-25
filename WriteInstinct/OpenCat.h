@@ -157,6 +157,8 @@ void meow(int repeat = 0, int pause = 200, int startF = 50,  int endF = 200, int
 #define T_MEOW      'u'
 #define T_UNDEFINED 'w'
 #define T_XLEG      'x'
+#define T_SING_ON   'y'
+#define T_SING_OFF  'z'
 
 //abbreviation //gait/posture/function names
 #define K00 "d"       //rest and shutdown all servos 

@@ -124,11 +124,13 @@ def disconnect():
 def MainProgram():
     connected = False
     sprinting = False
+    singing = False
     movementState = "IDLE"
     lastHeading = 90
     start = time.time()
     global joycon, dog, ser
     
+    last_capture = 0
     last_up = 0
     last_down = 0
     last_left = 0
@@ -180,17 +182,20 @@ def MainProgram():
                         
             # Taunts
             if(connected):
+                if(joycon.capture and not last_capture):
+                    if(singing):
+                        ser.write(b'z\n')
+                    else:
+                        ser.write(b'y\n')
+                    singing = not singing
+            
                 if(joycon.up and not last_up):
-                    print("UPPING")
                     ser.write(b'khi\n')
                 elif(joycon.down and not last_down):
-                    print("downING")
                     ser.write(b'ksit\n')
                 elif(joycon.left and not last_left):
-                    print("leftING")
                     ser.write(b'kpu\n')
                 elif(joycon.right and not last_right):
-                    print("rightING")
                     ser.write(b'kpee\n')
                 
             # Stick positions
@@ -291,6 +296,7 @@ def MainProgram():
             connected = False
             sphero = 0
             
+        last_capture = joycon.capture
         last_up = joycon.up
         last_down = joycon.down
         last_left = joycon.left

@@ -31,220 +31,19 @@
 #include "WriteInstinct/OpenCat.h"
 
 /* MUSIC INCLUDES AND DEFINES */
-//#define MODE_MUSIC
+// Enabling music disables IR control to optimize memory and CPU usage for interrupts.
+#define MODE_MUSIC
+#define KEY 110.0;
+
 #ifdef MODE_MUSIC
 // used to describe how fast the Arduino calls the interrupt. Higher means slower update and less accurate frequencies; lower means faster update and more accurate frequency. Anything lower than ~20 is corruptive.
 #define SPEEDCONST 48
 #define REST 126
 
-#include "Music.h"
 #include <math.h>
+#include "Music.h"
+#include "Songs.h"
 
-/* MUSIC CLASSES USED IN FORMATION OF SONGS */
-// a single note to be played in a Motif
-class Note {
-  public:
-    uint8_t duration; // durations: 64 = whole note, 32 = half note, 16 = quarter note, 8 = eighth note, 4 = sixteenth note
-    int8_t distance; // "distance" from the root note in semitones. REST (REST) for silence.
-    Note(char note, int nDur) : duration(nDur), distance(note) {}
-};
-
-// an array of Notes
-class Motif {
-  public:
-    uint8_t length; // number of notes
-    Note* notes;
-    Motif(Note* nNotes,  unsigned char nLength) : length(nLength), notes(nNotes) {}
-};
-
-// an array of Motifs
-class Song {
-  public:
-    uint8_t length;
-    //uint8_t defaultTempo; // in "(1 / noteIsOneBeat)-notes per minute" i.e. "quarter notes per minute" or "eighth notes per minute"       NUMERATOR of time signature
-    uint8_t defaultNoteIsOneBeat; // note that is one beat                                                                                DENOMINATOR of time signature
-    double beatInMilliseconds;
-    Motif** motifs;
-    Song(Motif** nMotifs,  unsigned char nLength,  unsigned char tempo,  unsigned char beat) : motifs(nMotifs), length(nLength), defaultNoteIsOneBeat(beat) {
-        beatInMilliseconds = getBeatInMilliseconds(tempo);
-    }
-};
-
-// SONG LIBRARY AND CLASSES
-// Some songs may be commented out, as the Arduino doesn't have enough memory to store them.
-class Songbook {
-    // declaration of Notes, Motifs, and Songs.
-    // motifs' number postfix show the order in the song they first appear
-    /*
-      PREFIX KEY:
-      n_          ...   Note[]  ---> Motif
-      n_...REST#  ...   Note[] with only rests
-      m_          ...   Motif
-      s_          ...   Motif[] ---> Song
-      [nothing]   ...   Song
-    */
-  private:
-//    static Note n_BM1[6];
-//    static Note n_BM2[6];
-//    static Note n_BM3[6];
-//    static Note n_BM4[6];
-//    static Note n_BM5[7];
-//    static Note n_BM6[4];
-//    static Note n_BM7[6];
-//    static Note n_BM8[8];
-//    static Note n_BM9[7];
-//    static Note n_BM10[8];
-//    static Note n_BM11[8];
-//    static Note n_BM12[10];
-//    static Note n_BM13[5];
-
-    static Note n_MEGAREST1[];
-    static Note n_MEGAMelody[];
-    static Note n_MEGA1[];
-    static Note n_MEGA2[];
-    static Note n_MEGA3[];
-    static Note n_MEGA4[];
-    static Note n_MEGA_Main1[];
-    static Note n_MEGA_Main2[];
-    
-    // ----------------------------------
-//    static Motif* m_BM1;
-//    static Motif* m_BM2;
-//    static Motif* m_BM3;
-//    static Motif* m_BM4;
-//    static Motif* m_BM5;
-//    static Motif* m_BM6;
-//    static Motif* m_BM7;
-//    static Motif* m_BM8;
-//    static Motif* m_BM9;
-//    static Motif* m_BM10;
-//    static Motif* m_BM11;
-//    static Motif* m_BM12;
-//    static Motif* m_BM13;
-
-    static Motif* m_MEGAMelody;
-    static Motif* m_MEGA1;
-    static Motif* m_MEGA2;
-    static Motif* m_MEGA3;
-    static Motif* m_MEGA4;
-    static Motif* m_MEGA_Main1;
-    static Motif* m_MEGA_Main2;
-    // ----------------------------------
-//    static Motif* s_BanneredMare[16];
-    static Motif* s_Megalovania[];
-    // ----------------------------------
-  public:
-//    static Song BanneredMare;
-    static Song Megalovania;
-};
-/* SONG DEFINITIONS */
-// NOTE ARRAYS
-//Note Songbook::n_BM1[6] = {
-//  Note(15, 48), Note(12, 16), Note(14, 32), Note(15, 48), Note(17, 16), Note(15, 32) // x6
-//};
-//Note Songbook::n_BM2[6] = {
-//  Note(14, 48), Note(10, 16), Note(12, 32), Note(14, 48), Note(15, 16), Note(14, 32) // x6
-//};
-//Note Songbook::n_BM3[6] = {
-//  Note(12, 48), Note(8, 16), Note(10, 32), Note(12, 48), Note(14, 16), Note(12, 32) // x6
-//};
-//Note Songbook::n_BM4[6] = {
-//  Note(11, 48), Note(12, 16), Note(9, 32), Note(11, 48), Note(REST, 16), Note(7, 32)// x6
-//};
-//Note Songbook::n_BM5[7] = {
-//  Note(12, 48), Note(14, 16), Note(12, 16),  Note(REST, 16), Note(12, 48), Note(14, 16), Note(12, 32) // x7
-//};
-//Note Songbook::n_BM6[4] = {
-//  Note(11, 64), Note(14, 32), Note(12, 64), Note(REST, 32) // x4
-//};
-//Note Songbook::n_BM7[6] = {
-//  Note(19, 48), Note(15, 16), Note(17, 32), Note(19, 48), Note(20, 16), Note(19, 32) // x6
-//};
-//Note Songbook::n_BM8[8] = {
-//  Note(17, 48), Note(14, 16), Note(15, 32), Note(17, 48), Note(19, 16), Note(17, 16), Note(15, 8), Note(99, 8) // x8
-//};
-//Note Songbook::n_BM9[7] = {
-//  Note(14, 32 / 3), Note(15, 32 / 3), Note(14, 32 / 3 + 48 + 8), Note(REST, 8), Note(14, 64), Note(10, 24), Note(REST, 8) // x7
-//};
-//Note Songbook::n_BM10[8] = {
-//  Note(19, 64), Note(15, 16), Note(17, 16), Note(19, 32), Note(20, 16), Note(19, 16), Note(17, 16), Note(15, 16) // x8
-//};
-//Note Songbook::n_BM11[8] = {
-//  Note(17, 64), Note(14, 16), Note(15, 16), Note(17, 32), Note(19, 16), Note(17, 16), Note(15, 16), Note(14, 16) // x8
-//};
-//Note Songbook::n_BM12[10] = {
-//  Note(15, 32), Note(12, 16), Note(14, 16), Note(15, 24), Note(REST, 8), Note(15, 32), Note(17, 16), Note(15, 16), Note(14, 16), Note(12, 16) // x10
-//};
-//Note Songbook::n_BM13[5] = {
-//  Note(14, 32), Note(10, 32), Note(14, 32), Note(12, 64), Note(REST, 32) // x5
-//};
-
-Note Songbook::n_MEGAMelody[] = {
-     Note(12, 4), Note(REST, 4),  Note(7, 4), Note(REST, 8),
-     Note(6, 4), Note(REST, 4), Note(5, 4), Note(REST, 4), Note(3, 8),
-     Note(0, 4), Note(3, 4), Note(5, 4) 
-};
-Note Songbook::n_MEGA1[] = {
-     Note(0, 4), Note(0, 4)
-};
-Note Songbook::n_MEGA2[] = {
-     Note(-2, 4), Note(-2, 4)
-};
-Note Songbook::n_MEGA3[] = {
-     Note(-3, 4), Note(-3, 4)
-};
-Note Songbook::n_MEGA4[] = {
-     Note(-4, 4), Note(-4, 4)
-};
-Note Songbook::n_MEGA_Main1[] = {
-     Note(2, 1), Note(3, 3), Note(REST, 4), Note(3, 4), Note(3, 4), Note(REST, 4), Note(3, 4), Note(REST, 4), Note(2, 1), Note(3, 7), Note(0, 4), Note(REST, 4), Note(0, 12), Note(REST, 8)
-};
-Note Songbook::n_MEGA_Main2[] = {
-     Note(3, 4), Note(REST, 4), Note(3, 4), Note(3, 4), Note(REST, 4), Note(5, 4), Note(REST, 4), Note(6, 8), Note(5, 2), Note(6, 2), Note(5, 4), Note(0, 4), Note(3, 4), Note(5, 4), Note(REST, 8)
-};
-
-// MOTIFS
-//Motif* Songbook::m_BM1 = new Motif(n_BM1, 6);
-//Motif* Songbook::m_BM2 = new Motif(n_BM2, 6);
-//Motif* Songbook::m_BM3 = new Motif(n_BM3, 6);
-//Motif* Songbook::m_BM4 = new Motif(n_BM4, 6);
-//Motif* Songbook::m_BM5 = new Motif(n_BM5, 7);
-//Motif* Songbook::m_BM6 = new Motif(n_BM6, 4);
-//Motif* Songbook::m_BM7 = new Motif(n_BM7, 6);
-//Motif* Songbook::m_BM8 = new Motif(n_BM8, 8);
-//Motif* Songbook::m_BM9 = new Motif(n_BM9, 7);
-//Motif* Songbook::m_BM10 = new Motif(n_BM10, 8);
-//Motif* Songbook::m_BM11 = new Motif(n_BM11, 8);
-//Motif* Songbook::m_BM12 = new Motif(n_BM12, 10);
-//Motif* Songbook::m_BM13 = new Motif(n_BM13, 5);
-//Motif* Songbook::s_BanneredMare[16] = {
-//  m_BM1, m_BM2, m_BM3, m_BM4,
-//  m_BM1, m_BM2, m_BM5, m_BM6,
-//  m_BM7, m_BM8, m_BM1, m_BM9,
-//  m_BM10, m_BM11, m_BM12, m_BM13
-//};
-
-Motif* Songbook::m_MEGAMelody = new Motif(n_MEGAMelody, 12);
-Motif* Songbook::m_MEGA1 = new Motif(n_MEGA1, 2);
-Motif* Songbook::m_MEGA2 = new Motif(n_MEGA2, 2);
-Motif* Songbook::m_MEGA3 = new Motif(n_MEGA3, 2);
-Motif* Songbook::m_MEGA4 = new Motif(n_MEGA4, 2);
-Motif* Songbook::m_MEGA_Main1 = new Motif(n_MEGA_Main1, 14);
-Motif* Songbook::m_MEGA_Main2 = new Motif(n_MEGA_Main2, 15);
-Motif* Songbook::s_Megalovania[] = {
-    m_MEGA1, m_MEGAMelody, m_MEGA2, m_MEGAMelody, m_MEGA3, m_MEGAMelody, m_MEGA4, m_MEGAMelody, 
-    
-    m_MEGA1, m_MEGAMelody, m_MEGA2, m_MEGAMelody, m_MEGA3, m_MEGAMelody, m_MEGA4, m_MEGAMelody,
-    
-    m_MEGA_Main1, m_MEGA_Main2
-};
-//Motif* Songbook::s_Megalovania[] = {
-//    m_MEGA_Main1, m_MEGA_Main2
-//};
-
-// SONGS
-//Song Songbook::BanneredMare = Song(s_BanneredMare, 16, 90, 8);
-Song Songbook::Megalovania = Song(s_Megalovania, 18, 60, 4);
 
 /* MUSIC VARIABLES */
 // Timer reload value, globally available
@@ -272,7 +71,7 @@ uint8_t motifIndex = 0;
 // holds the index of the current Note of a Motif to play
 uint8_t noteIndex = 0;
 
-double key = 220.0;
+double key = KEY;
 // Current song and note
 Song* currentSong;
 Note* currentNote;
@@ -374,61 +173,61 @@ volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin h
 void dmpDataReady() {
   mpuInterrupt = true;
 }
-//
-//// https://brainy-bits.com/blogs/tutorials/ir-remote-arduino
-//#include <IRremote.h>
-///*-----( Declare objects )-----*/
-//IRrecv irrecv(IR_RECEIVER);     // create instance of 'irrecv'
-//decode_results results;      // create instance of 'decode_results'
-//
-//String translateIR() // takes action based on IR code received
-//// describing Remote IR codes.
-//{
-//  switch (results.value) {
-//    //IR signal    key on IR remote           //key mapping
-//    case 0xFFA25D: /*PTLF(" CH-");   */       return (F(K00));
-//    case 0xFF629D: /*PTLF(" CH");  */         return (F(K01));
-//    case 0xFFE21D: /*PTLF(" CH+"); */         return (F(K02));
-//
-//    case 0xFF22DD: /*PTLF(" |<<"); */         return (F(K10));
-//    case 0xFF02FD: /*PTLF(" >>|"); */         return (F(K11));
-//    case 0xFFC23D: /*PTLF(" >||"); */         return (F(K12));
-//
-//    case 0xFFE01F: /*PTLF(" -");   */         return (F(K20));
-//    case 0xFFA857: /*PTLF(" +");  */          return (F(K21));
-//    case 0xFF906F: /*PTLF(" EQ"); */          return (F(K22));
-//
-//    case 0xFF6897: /*PTLF(" 0");  */          return (F(K30));
-//    case 0xFF9867: /*PTLF(" 100+"); */        return (F(K31));
-//    case 0xFFB04F: /*PTLF(" 200+"); */        return (F(K32));
-//
-//    case 0xFF30CF: /*PTLF(" 1");  */          return (F(K40));
-//    case 0xFF18E7: /*PTLF(" 2");  */          return (F(K41));
-//    case 0xFF7A85: /*PTLF(" 3");  */          return (F(K42));
-//
-//    case 0xFF10EF: /*PTLF(" 4");  */          return (F(K50));
-//    case 0xFF38C7: /*PTLF(" 5");  */          return (F(K51));
-//    case 0xFF5AA5: /*PTLF(" 6");  */          return (F(K52));
-//
-//    case 0xFF42BD: /*PTLF(" 7");  */          return (F(K60));
-//    case 0xFF4AB5: /*PTLF(" 8");  */          return (F(K61));
-//    case 0xFF52AD: /*PTLF(" 9");  */          return (F(K62));
-//
-//    case 0xFFFFFFFF: return (""); //Serial.println(" REPEAT");
-//
-//    default: {
-//        //Serial.println(results.value, HEX);
-//      }
-//      return ("");                      //Serial.println("null");
-//  }// End Case
-//  //delay(100); // Do not get immediate repeat //no need because the main loop is slow
-//
-//  // The control could be organized in another way, such as:
-//  // forward/backward to change the gaits corresponding to different speeds.
-//  // left/right key for turning left and right
-//  // number keys for different postures or behaviors
-//}
+#ifndef MODE_MUSIC
+// https://brainy-bits.com/blogs/tutorials/ir-remote-arduino
+#include <IRremote.h>
+/*-----( Declare objects )-----*/
+IRrecv irrecv(IR_RECEIVER);     // create instance of 'irrecv'
+decode_results results;      // create instance of 'decode_results'
 
+String translateIR() // takes action based on IR code received
+// describing Remote IR codes.
+{
+  switch (results.value) {
+    //IR signal    key on IR remote           //key mapping
+    case 0xFFA25D: /*PTLF(" CH-");   */       return (F(K00));
+    case 0xFF629D: /*PTLF(" CH");  */         return (F(K01));
+    case 0xFFE21D: /*PTLF(" CH+"); */         return (F(K02));
+
+    case 0xFF22DD: /*PTLF(" |<<"); */         return (F(K10));
+    case 0xFF02FD: /*PTLF(" >>|"); */         return (F(K11));
+    case 0xFFC23D: /*PTLF(" >||"); */         return (F(K12));
+
+    case 0xFFE01F: /*PTLF(" -");   */         return (F(K20));
+    case 0xFFA857: /*PTLF(" +");  */          return (F(K21));
+    case 0xFF906F: /*PTLF(" EQ"); */          return (F(K22));
+
+    case 0xFF6897: /*PTLF(" 0");  */          return (F(K30));
+    case 0xFF9867: /*PTLF(" 100+"); */        return (F(K31));
+    case 0xFFB04F: /*PTLF(" 200+"); */        return (F(K32));
+
+    case 0xFF30CF: /*PTLF(" 1");  */          return (F(K40));
+    case 0xFF18E7: /*PTLF(" 2");  */          return (F(K41));
+    case 0xFF7A85: /*PTLF(" 3");  */          return (F(K42));
+
+    case 0xFF10EF: /*PTLF(" 4");  */          return (F(K50));
+    case 0xFF38C7: /*PTLF(" 5");  */          return (F(K51));
+    case 0xFF5AA5: /*PTLF(" 6");  */          return (F(K52));
+
+    case 0xFF42BD: /*PTLF(" 7");  */          return (F(K60));
+    case 0xFF4AB5: /*PTLF(" 8");  */          return (F(K61));
+    case 0xFF52AD: /*PTLF(" 9");  */          return (F(K62));
+
+    case 0xFFFFFFFF: return (""); //Serial.println(" REPEAT");
+
+    default: {
+        //Serial.println(results.value, HEX);
+      }
+      return ("");                      //Serial.println("null");
+  }// End Case
+  //delay(100); // Do not get immediate repeat //no need because the main loop is slow
+
+  // The control could be organized in another way, such as:
+  // forward/backward to change the gaits corresponding to different speeds.
+  // left/right key for turning left and right
+  // number keys for different postures or behaviors
+}
+#endif
 
 char token;
 char lastToken;
@@ -673,12 +472,13 @@ void setup() {
   playMelody(MELODY);
 #endif
 
-//  //IR
-//  {
-//    //PTLF("IR Receiver Button Decode");
-//    irrecv.enableIRIn(); // Start the receiver
-//  }
-
+#ifndef MODE_MUSIC
+  //IR
+  {
+    //PTLF("IR Receiver Button Decode");
+    irrecv.enableIRIn(); // Start the receiver
+  }
+#endif
   assignSkillAddressToOnboardEeprom();
   PTL();
 
@@ -748,11 +548,12 @@ void setup() {
   // MUSIC SETUP DONE
   // PLAY SONG
   currentSong = &Songbook::Megalovania;
-  playingSong = true;
+//  playingSong = true;
   #endif
 }
 
 void loop() {
+  lastToken = token;
   float voltage = analogRead(BATT);
   if (voltage <
 #ifdef NyBoard_V0_1
@@ -776,19 +577,21 @@ void loop() {
 
     // input block
     //else if (t == 0) {
-//    if (irrecv.decode(&results)) {
-//      String IRsig = irParser(translateIR());
-//      //PTL(IRsig);
-//      if (IRsig != "") {
-//        strcpy(newCmd, IRsig.c_str());
-//        if (strlen(newCmd) == 1)
-//          token = newCmd[0];
-//        else
-//          token = T_SKILL;
-//        newCmdIdx = 2;
-//      }
-//      irrecv.resume(); // receive the next value
-//    }
+#ifndef MODE_MUSIC
+    if (irrecv.decode(&results)) {
+      String IRsig = irParser(translateIR());
+      //PTL(IRsig);
+      if (IRsig != "") {
+        strcpy(newCmd, IRsig.c_str());
+        if (strlen(newCmd) == 1)
+          token = newCmd[0];
+        else
+          token = T_SKILL;
+        newCmdIdx = 2;
+      }
+      irrecv.resume(); // receive the next value
+    }
+#endif
     if ( Serial.available() > 0) {
       token = Serial.read();
       newCmdIdx = 3;
@@ -818,7 +621,7 @@ void loop() {
     //for obstacle avoidance and auto recovery
     if (newCmdIdx) {
       PTL(token);
-      beep(newCmdIdx * 4);
+//      beep(newCmdIdx * 4);
       // this block handles argumentless tokens
       switch (token) {
         //        case T_HELP: {
@@ -979,8 +782,16 @@ void loop() {
         //            skillByName("balance");
         //            break;
         //          }
-
-
+        case T_SING_ON: // start playing the current song
+          playingSong = true;
+          // keep doing previous task
+          token = lastToken;
+          break;
+        case T_SING_OFF: // stop playing the current song
+          endSong();
+          // keep doing previous task
+          token = lastToken;
+          break;
         default: if (Serial.available() > 0) {
             String inBuffer = Serial.readStringUntil('\n');
             strcpy(newCmd, inBuffer.c_str());
