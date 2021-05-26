@@ -39,7 +39,7 @@ uint8_t noteIndex = 0;
 
 double key = KEY;
 // Current song and note
-Song* currentSong;
+Song* currentSong = &Songbook::Megalovania;;
 Note* currentNote;
 
 // resets variables used for tracking notes, etc.

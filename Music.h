@@ -7,7 +7,6 @@
 #define MICROC 1000000.0 / 2 / SPEEDCONST
 
 /* FUNCTION DECLARATIONS */
-//void setKey(char, double*);
 double getBeatInMilliseconds(char);
 double getFreq(int8_t, double);
 char getMicros(double);

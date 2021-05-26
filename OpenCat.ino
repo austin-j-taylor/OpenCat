@@ -31,8 +31,8 @@
 // Mode selection
 // Only have one enabled at a time
 
-#define MODE_MUSIC // Enabling music disables IR control to optimize memory and CPU usage for interrupts.
-//#define MODE_MEGALO_TRACKING // Dog looks for a square blob and tracks it, singing when in sight
+//#define MODE_MUSIC // Enabling music disables IR control to optimize memory and CPU usage for interrupts.
+#define MODE_MEGALO_TRACKING // Dog looks for a square blob and tracks it, singing when in sight
 
 
 #define MAIN_SKETCH
@@ -316,29 +316,29 @@ void setup() {
   while (Serial.available() && Serial.read()); // empty buffer
   delay(100);
   PTLF("\n* Start *");
-  PTLF("Initialize I2C");
-  PTLF("Connect MPU6050");
+//  PTLF("Initialize I2C");
+//  PTLF("Connect MPU6050");
   mpu.initialize();
   //do
   {
     delay(500);
     // verify connection
-    PTLF("Test connection");
-    PTL(mpu.testConnection() ? F("MPU successful") : F("MPU failed"));//sometimes it shows "failed" but is ok to bypass.
+//    PTLF("Test connection");
+//    PTL(mpu.testConnection() ? F("MPU successful") : F("MPU failed"));//sometimes it shows "failed" but is ok to bypass.
   } //while (!mpu.testConnection());
 
   // load and configure the DMP
   do {
-    PTLF("Initialize DMP");
+//    PTLF("Initialize DMP");
     devStatus = mpu.dmpInitialize();
     delay(500);
     // supply your own gyro offsets here, scaled for min sensitivity
 
     for (byte i = 0; i < 4; i++) {
-      PT(EEPROMReadInt(MPUCALIB + 4 + i * 2));
-      PT(" ");
+//      PT(EEPROMReadInt(MPUCALIB + 4 + i * 2));
+//      PT(" ");
     }
-    PTL();
+//    PTL();
     mpu.setZAccelOffset(EEPROMReadInt(MPUCALIB + 4));
     mpu.setXGyroOffset(EEPROMReadInt(MPUCALIB + 6));
     mpu.setYGyroOffset(EEPROMReadInt(MPUCALIB + 8));
@@ -346,16 +346,16 @@ void setup() {
     // make sure it worked (returns 0 if so)
     if (devStatus == 0) {
       // turn on the DMP, now that it's ready
-      PTLF("Enable DMP");
+//      PTLF("Enable DMP");
       mpu.setDMPEnabled(true);
 
       // enable Arduino interrupt detection
-      PTLF("Enable interrupt");
+//      PTLF("Enable interrupt");
       attachInterrupt(INTERRUPT, dmpDataReady, RISING);
       mpuIntStatus = mpu.getIntStatus();
 
       // set our DMP Ready flag so the main loop() function knows it's okay to use it
-      PTLF("DMP ready!");
+//      PTLF("DMP ready!");
       //dmpReady = true;
 
       // get expected DMP packet size for later comparison
@@ -365,10 +365,10 @@ void setup() {
       // 1 = initial memory load failed
       // 2 = DMP configuration updates failed
       // (if it's going to break, usually the code will be 1)
-      PTLF("DMP failed (code ");
-      PT(devStatus);
-      PTLF(")");
-      PTL();
+//      PTLF("DMP failed (code ");
+//      PT(devStatus);
+//      PTLF(")");
+//      PTL();
     }
   } while (devStatus);
 
@@ -385,7 +385,7 @@ void setup() {
   }
 #endif
   assignSkillAddressToOnboardEeprom();
-  PTL();
+//  PTL();
 
   // servo
   { pwm.begin();
@@ -415,8 +415,6 @@ void setup() {
   meow();
 
 #if defined(MODE_MUSIC) || defined(MODE_MEGALO_TRACKING)
-  /* MUSIC SETUP */
-//  setKey('D', &key); // C D E F G A B
   /* TIMER STUFF */
   /* First disable the timer overflow interrupt*/
   TIMSK2 &= ~(1 << TOIE2);
@@ -451,9 +449,6 @@ void setup() {
   TIMSK2 |= (1 << TOIE2);
   
   // MUSIC SETUP DONE
-  // PLAY SONG
-  currentSong = &Songbook::Megalovania;
-//  playingSong = true;
   #endif
   #ifdef MODE_MEGALO_TRACKING
     setup_BallTracking();
@@ -461,9 +456,6 @@ void setup() {
 }
 
 void loop() {
-#ifdef MODE_MEGALO_TRACKING
-  loop_BallTracking();
-#else
   lastToken = token;
   float voltage = analogRead(BATT);
   if (voltage <
@@ -476,8 +468,8 @@ void loop() {
     //adjust the thresholds according to your batteries' voltage
     //if set too high, the robot will keep crying.
     //If too low, Nybble may faint due to temporary voltage drop
-    PTL("check battery");
-    PTL(voltage);//relative voltage
+//    PTL("check battery");
+//    PTL(voltage);//relative voltage
 //    meow();
     delay(1000);
   }
@@ -487,8 +479,11 @@ void loop() {
 
 
     // input block
+#ifdef MODE_MEGALO_TRACKING
+    loop_BallTracking(&token, newCmd, &newCmdIdx);
+#endif
     //else if (t == 0) {
-#ifndef MODE_MUSIC
+#if !defined(MODE_MUSIC) && !defined(MODE_MEGALO_TRACKING)
     if (irrecv.decode(&results)) {
       String IRsig = irParser(translateIR());
       //PTL(IRsig);
@@ -878,5 +873,4 @@ void loop() {
         timer = 0;
     }
   }
-#endif
 }
