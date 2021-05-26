@@ -1,3 +1,4 @@
+#if defined(MODE_MUSIC) || defined(MODE_MEGALO_TRACKING)
 
 /* MUSIC CLASSES USED IN FORMATION OF SONGS */
 // a single note to be played in a Motif
@@ -226,3 +227,5 @@ Motif* Songbook::s_Megalovania[] = {
 // SONGS
 //Song Songbook::BanneredMare = Song(s_BanneredMare, 16, 90, 8);
 Song Songbook::Megalovania = Song(s_Megalovania, 21, 60, 4);
+
+#endif

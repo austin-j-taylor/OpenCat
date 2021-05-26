@@ -1,3 +1,5 @@
+#if defined(MODE_MUSIC) || defined(MODE_MEGALO_TRACKING)
+
 // used in calculation of frequencies
 // Frequency 'n' semitones away from Base Frequency = Base Frequency * ((2^(1/12))^n)
 #define twototheonetwelfth pow(2, (1 / 12.0))
@@ -23,3 +25,5 @@ double getFreq(int8_t distance, double key) {
 char getMicros(double freq) {
   return (char) (MICROC / freq + .5);
 }
+
+#endif

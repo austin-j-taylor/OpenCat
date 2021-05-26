@@ -808,6 +808,12 @@ void allCalibratedPWM(char * dutyAng, byte offset = 0) {
   }
 }
 
+void allCalibratedPWM(int * dutyAng, byte offset = 0) {
+  for (int8_t i = DOF - 1; i >= offset; i--) {
+    calibratedPWM(i, (char)dutyAng[i]);
+  }
+}
+
 void shutServos() {
   delay(100);
   for (int8_t i = DOF - 1; i >= 0; i--) {
