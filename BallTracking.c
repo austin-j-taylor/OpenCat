@@ -1,5 +1,7 @@
 #ifdef MODE_MEGALO_TRACKING
 
+#undef GYRO
+
 /*
    Choose communication mode define here:
       I2C_MODE    : I2C mode, default pin: MU_SDA <==> ARDUINO_SDA, MU_SCL <==> ARDUINO_SCL
@@ -78,11 +80,8 @@ void loop_BallTracking(char* token, char* newCmd, byte* newCmdIdx) {
   long time_start = millis();
   static int counter = 0;
   static bool isBlue = false;
-  static int xCoord, yCoord; //the x y returned by the sensor
-  static int xDiff, yDiff; //the scaled distance from the center of the frame
   static int currentX = 0, currentY = 0; //the current x y of the camera's direction in the world coordinate
-  static char state = 0;
-  counter++;
+  static int state = 0;
 
   bool target_found = (*Mu).GetValue(VISION_COLOR_DETECT, kStatus); // update vision result and get status, 0: undetected, other: detected
 
@@ -91,61 +90,70 @@ void loop_BallTracking(char* token, char* newCmd, byte* newCmdIdx) {
     case 0: // No object found
       if (target_found) {
         state = 1;
-      }
-      break;
-    case 1:
-      if(motifIndex > DROP_MEASURE) { // start dancing
-        state = 2;
-        *token = T_SKILL;
-        strcpy(newCmd, "pu");
-        *newCmdIdx = 5;
-      } else if (!target_found) {
-        state = 0;
-        endSong();
-      }
-      break;
-    case 2:
-      if(!playingSong) {
-        state = 0;
         (*Mu).LedSetColor(kLed2, kLedBlue, kLedClose, 1);
       }
       break;
-  }
-
-  // Actions
-  switch(state) {
-    case 0: // No object found
-      break;
     case 1: // Object found. singing. drop has not yet hit.
-      playingSong = true;
-      
-      xCoord = (int)(*Mu).GetValue(VISION_COLOR_DETECT, kXValue);
-      yCoord = (int)(*Mu).GetValue(VISION_COLOR_DETECT, kYValue);
-    
-      xDiff = max(min((xCoord - 100 / 2) / 4, 30), -30);// 100 = the frame size 0~100 on X and Y direction
-      yDiff = max(min((yCoord - 100 / 2) / 4, 20), -20);
-    
-      currentX = max(min(currentX - min(xDiff, 40), 80), -90);
-      currentY = max(min(currentY - min(yDiff, 30), 60), -75);
-    
-      int a[DOF] = {currentX / 1.2, 0, 0, 0, \
-                    0, 0, 0, 0, \
-                    60 - currentY / 2 + currentX / 6, 60 - currentY / 2 - currentX / 6, 90 + currentY / 3 - currentX / 8, 90 + currentY / 3 + currentX / 8, \
-                    15 + currentY / 1.2  - currentX / 3, 15 + currentY / 1.2 + currentX / 3, -30 - currentY / 3 + currentX / 4, -30 - currentY / 3 - currentX / 4\
-                   };
-      transform(a, 1, 4);
-      break;
-    case 2: // Drop has hit. waiting for song to end. Flash eye.
-      if(counter % 2 == 0) {
-        isBlue = !isBlue;
-        if(isBlue) {
-          Serial.println("Blue");
-          (*Mu).LedSetColor(kLed2, kLedBlue, kLedBlue, 1);
-        } else {
-          Serial.println("Yellow");
-          (*Mu).LedSetColor(kLed2, kLedYellow, kLedYellow, 1);
+      if(motifIndex > DROP_MEASURE) { // start dancing
+        state = 2;
+        (*Mu).LedSetColor(kLed2, kLedBlue, kLedBlue, 1);
+        Serial.println("sending cmd...");
+        *token = T_SKILL;
+        strcpy(newCmd, "ck");
+        *newCmdIdx = 3;
+      } else if (!target_found) {
+        state = 0;
+        Serial.println("sending rest...");
+        *token = T_REST;
+        *newCmdIdx = 3;
+        endSong();
+      } else {
+        if(motifIndex > 3) {
+          counter++;
+          if(counter % 2 == 0) {
+            isBlue = !isBlue;
+            if(isBlue) {
+              (*Mu).LedSetColor(kLed2, kLedBlue, kLedClose, 1);
+            } else {
+              (*Mu).LedSetColor(kLed2, kLedYellow, kLedClose, 1);
+            }
+          }
         }
+        playingSong = true;
+      
+        int xCoord = (int)(*Mu).GetValue(VISION_COLOR_DETECT, kXValue);
+        int yCoord = (int)(*Mu).GetValue(VISION_COLOR_DETECT, kYValue);
+      
+        int xDiff = max(min((xCoord - 100 / 2) / 4, 30), -30);// 100 = the frame size 0~100 on X and Y direction
+        int yDiff = max(min((yCoord - 100 / 2) / 4, 20), -20);
+      
+        currentX = max(min(currentX - min(xDiff, 40), 80), -90);
+        currentY = max(min(currentY - min(yDiff, 30), 60), -75);
+      
+        int a[DOF] = {currentX / 1.2, 0, 0, 0, \
+                      0, 0, 0, 0, \
+                      60 - currentY / 2 + currentX / 6, 60 - currentY / 2 - currentX / 6, 90 + currentY / 3 - currentX / 8, 90 + currentY / 3 + currentX / 8, \
+                      15 + currentY / 1.2  - currentX / 3, 15 + currentY / 1.2 + currentX / 3, -30 - currentY / 3 + currentX / 4, -30 - currentY / 3 - currentX / 4\
+                     };
+        transform(a, 1, 4);
+        break;
       }
+    case 2: // Drop has hit. waiting for song to end. Flash eye.
+      if(!playingSong) {
+        Serial.println("Ending song.");
+        state = 0;
+        Serial.println("sending rest...");
+        *token = T_REST;
+        *newCmdIdx = 3;
+      } else {
+        Serial.println("sending cmd...");
+        *token = T_SKILL;
+        strcpy(newCmd, "ck");
+        *newCmdIdx = 3;
+      }
+      break;
+    default:
+      Serial.println("invalid state");
       break;
   }
 }

@@ -6,6 +6,12 @@
 // used to describe conversion from Hz to microseconds for Arduino
 #define MICROC 1000000.0 / 2 / SPEEDCONST
 
+#define KEY 110.0;
+
+// used to describe how fast the Arduino calls the interrupt. Higher means slower update and less accurate frequencies; lower means faster update and more accurate frequency. Anything lower than ~20 is corruptive.
+#define SPEEDCONST 128
+#define REST 126
+
 /* FUNCTION DECLARATIONS */
 double getBeatInMilliseconds(char);
 double getFreq(int8_t, double);

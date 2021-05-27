@@ -700,7 +700,7 @@ void loop() {
           token = lastToken;
           break;
 #endif
-        default: if (Serial.available() > 0) {
+        default: if (Serial.available() > 0) { // T_SKILL ('k') falls through to here, since there's no case for it
             String inBuffer = Serial.readStringUntil('\n');
             strcpy(newCmd, inBuffer.c_str());
           }
@@ -719,6 +719,8 @@ void loop() {
         if (token == T_SKILL) { //validating key
 
           motion.loadBySkillName(newCmd);
+          Serial.println("Loading skill: ");
+          Serial.println(newCmd);
 
           char lr = newCmd[strlen(newCmd) - 1];
           offsetLR = (lr == 'L' ? 15 : (lr == 'R' ? -15 : 0));

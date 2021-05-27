@@ -1,10 +1,5 @@
 #if defined(MODE_MUSIC) || defined(MODE_MEGALO_TRACKING)
 /* MUSIC INCLUDES AND DEFINES */
-#define KEY 110.0;
-
-// used to describe how fast the Arduino calls the interrupt. Higher means slower update and less accurate frequencies; lower means faster update and more accurate frequency. Anything lower than ~20 is corruptive.
-#define SPEEDCONST 48
-#define REST 126
 
 #include <math.h>
 #include "Music.h"

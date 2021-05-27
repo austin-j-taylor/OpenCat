@@ -213,6 +213,13 @@ Motif* Songbook::m_MEGA_Main3 = new Motif(n_MEGA_Main3, 23);
 Motif* Songbook::m_MEGA_Main4 = new Motif(n_MEGA_Main4, 26);
 Motif* Songbook::m_MEGA_Main5 = new Motif(n_MEGA_Main5, 13);
 
+//Motif* Songbook::s_Megalovania[] = {
+//    m_MEGA1, m_MEGA1, m_MEGA1, m_MEGA1, m_MEGA1, m_MEGA1, m_MEGA1, m_MEGA1, 
+//    
+//    m_MEGA1, m_MEGA1, m_MEGA1, m_MEGA1, m_MEGA1, m_MEGA1, m_MEGA1, m_MEGA1,
+//    
+//    m_MEGA1, m_MEGA1, m_MEGA1, m_MEGA1, m_MEGA1
+//};
 Motif* Songbook::s_Megalovania[] = {
     m_MEGA1, m_MEGAMelody, m_MEGA2, m_MEGAMelody, m_MEGA3, m_MEGAMelody, m_MEGA4, m_MEGAMelody, 
     
