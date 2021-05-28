@@ -97,15 +97,13 @@ void loop_BallTracking(char* token, char* newCmd, byte* newCmdIdx) {
       if(motifIndex > DROP_MEASURE) { // start dancing
         state = 2;
         (*Mu).LedSetColor(kLed2, kLedBlue, kLedBlue, 1);
-        Serial.println("sending cmd...");
         *token = T_SKILL;
         strcpy(newCmd, "ck");
         *newCmdIdx = 3;
       } else if (!target_found) {
         state = 0;
-        Serial.println("sending rest...");
-        *token = T_REST;
-        *newCmdIdx = 3;
+//        *token = T_REST;
+//        *newCmdIdx = 3;
         endSong();
       } else {
         if(motifIndex > 3) {
@@ -136,24 +134,22 @@ void loop_BallTracking(char* token, char* newCmd, byte* newCmdIdx) {
                       15 + currentY / 1.2  - currentX / 3, 15 + currentY / 1.2 + currentX / 3, -30 - currentY / 3 + currentX / 4, -30 - currentY / 3 - currentX / 4\
                      };
         transform(a, 1, 4);
-        break;
       }
+      break;
     case 2: // Drop has hit. waiting for song to end. Flash eye.
       if(!playingSong) {
-        Serial.println("Ending song.");
+        Serial.println("Song has finished. resting.");
         state = 0;
-        Serial.println("sending rest...");
         *token = T_REST;
         *newCmdIdx = 3;
       } else {
-        Serial.println("sending cmd...");
+        Serial.println("Dancing...");
         *token = T_SKILL;
         strcpy(newCmd, "ck");
         *newCmdIdx = 3;
       }
       break;
     default:
-      Serial.println("invalid state");
       break;
   }
 }
